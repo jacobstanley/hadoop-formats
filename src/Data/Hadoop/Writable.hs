@@ -9,10 +9,12 @@ module Data.Hadoop.Writable
     , Decoder(..)
     ) where
 
+import           Control.Monad (replicateM_)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import           Data.ByteString.Internal (ByteString(..))
 import           Data.Int (Int8, Int16, Int32, Int64)
+import           Data.STRef
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -21,6 +23,7 @@ import           Foreign.ForeignPtr (castForeignPtr)
 import           Foreign.Storable (sizeOf)
 
 import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as M
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Storable as S
 
@@ -103,11 +106,29 @@ bytesToVector (PS bs off nbytes) = U.convert
                                  $ nbytes `div` sizeOf (undefined :: a)
 
 split :: (ByteString -> a) -> ByteString -> U.Vector Int -> V.Vector a
-split f bs lens = snd $ U.foldl' (splitOne f) (bs, V.empty) lens
+split f bs lens = V.create $ do
+    let numRecs = U.length lens
+    v <- M.unsafeNew numRecs
+    offRef <- newSTRef 0
+    idxRef <- newSTRef 0
 
-splitOne :: (ByteString -> a) -> (ByteString, V.Vector a) -> Int -> (ByteString, V.Vector a)
-splitOne f (bs, v) l = let (vbs, bs') = B.splitAt l bs
-                       in (bs', v `V.snoc` f vbs)
+    replicateM_ numRecs $ do
+        idx <- readSTRef idxRef
+        off <- readSTRef offRef
+
+        let len   = U.unsafeIndex lens idx
+            slice = unsafeSlice off len bs
+
+        writeSTRef idxRef (idx + 1)
+        writeSTRef offRef (off + len)
+
+        M.unsafeWrite v idx (f slice)
+
+    return v
+
+unsafeSlice :: Int -> Int -> ByteString -> ByteString
+unsafeSlice off len (PS ptr poff _) = PS ptr (poff + off) len
+{-# INLINE unsafeSlice #-}
 
 vintSize :: Word8 -> Int
 vintSize = go . fromIntegral
@@ -116,3 +137,4 @@ vintSize = go . fromIntegral
     go x | x >= -112 = 1
          | x < -120  = fromIntegral (-119 - x)
          | otherwise = fromIntegral (-111 - x)
+{-# INLINE vintSize #-}
