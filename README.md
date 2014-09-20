@@ -1,12 +1,13 @@
 Hadoop Formats
 ==============
 
-[![Build
-Status](https://travis-ci.org/jystic/hadoop-formats.svg?branch=master)](https://travis-ci.org/jystic/hadoop-formats)
-
 Read/write file formats commonly used by Hadoop.
 
 Currently this package only supports reading sequence files.
+
+[![Build Status](https://travis-ci.org/jystic/hadoop-formats.svg?branch=master)](https://travis-ci.org/jystic/hadoop-formats)
+
+## Installation
 
 You will need to have `libsnappy` installed to build this project. If you are
 using OSX and homebrew to install snappy then the following should get
