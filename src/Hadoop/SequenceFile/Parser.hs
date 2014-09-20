@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -w #-}
 
 module Hadoop.SequenceFile.Parser
@@ -27,6 +28,7 @@ import           Text.Printf (printf)
 
 import           Hadoop.SequenceFile.Types
 import           Hadoop.Unsafe
+import           Hadoop.Writable
 
 ------------------------------------------------------------------------
 
@@ -75,7 +77,7 @@ md5 = MD5 <$> A.take 16
 ------------------------------------------------------------------------
 
 -- | Attoparsec 'Parser' for sequence file record blocks.
-recordBlock :: Header -> Parser (RecordBlock ByteString ByteString)
+recordBlock :: (Writable ck k, Writable cv v) => Header -> Parser (RecordBlock k v)
 recordBlock Header{..} = do
     escape <- anyWord32le
     when (escape /= 0xffffffff)
@@ -87,14 +89,14 @@ recordBlock Header{..} = do
          (fail $ "file corrupt, expected to find sync marker " ++
                  "<" ++ show hdSync ++ "> but was <" ++ show sync ++ ">")
 
-    cNumRecords   <- anyVInt
-    cKeyLengths   <- vintPrefixedBytes
-    cKeys         <- vintPrefixedBytes
-    cValueLengths <- vintPrefixedBytes
-    cValues       <- vintPrefixedBytes
+    rbCount      <- anyVInt
+    keyLengths   <- vintPrefixedBytes
+    keys         <- vintPrefixedBytes
+    valueLengths <- vintPrefixedBytes
+    values       <- vintPrefixedBytes
 
-    let rbKeys   = decodeSnappyBlock cNumRecords cKeyLengths   cKeys
-        rbValues = decodeSnappyBlock cNumRecords cValueLengths cValues
+    let rbKeys   = decodeSnappyBlock rbCount keyLengths   keys
+        rbValues = decodeSnappyBlock rbCount valueLengths values
 
     return RecordBlock{..}
 

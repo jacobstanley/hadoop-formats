@@ -2,14 +2,14 @@ module Hadoop.SequenceFile.Types
     ( Header(..)
     , MD5(..)
     , RecordBlock(..)
-    , rbCount
     ) where
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import           Data.Text (Text)
-import qualified Data.Vector as V
 import           Text.Printf (printf)
+
+import           Hadoop.Writable
 
 ------------------------------------------------------------------------
 
@@ -32,13 +32,10 @@ newtype MD5 = MD5 { unMD5 :: ByteString }
 -- | A block of key\/value pairs. The key at index /i/ always relates to the
 -- value at index /i/. Both vectors will always be the same size.
 data RecordBlock k v = RecordBlock
-    { rbKeys   :: V.Vector k -- ^ The keys.
-    , rbValues :: V.Vector v -- ^ The values.
-    } deriving (Eq, Ord, Show)
-
--- | Count the number of records in this block.
-rbCount :: RecordBlock k v -> Int
-rbCount (RecordBlock ks _) = V.length ks
+    { rbCount  :: Int -- ^ The number of records.
+    , rbKeys   :: Collection k -- ^ The keys.
+    , rbValues :: Collection v -- ^ The values.
+    }
 
 ------------------------------------------------------------------------
 

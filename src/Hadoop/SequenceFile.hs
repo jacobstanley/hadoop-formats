@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | This module allows for lazy decoding of hadoop sequence files from a lazy
 -- 'L.ByteString'. In the future an incremental API using strict 'S.ByteString'
@@ -44,30 +45,18 @@
 module Hadoop.SequenceFile
     ( Stream(..)
     , Writable(..)
-
-    , RawRecordBlock
     , RecordBlock(..)
-    , rbCount
-
     , decode
-    , rawDecode
     ) where
 
-import           Control.Applicative ((<$>))
 import qualified Data.Attoparsec.ByteString.Lazy as A
-import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import           Data.Foldable (Foldable(..))
-import           Data.Int (Int8)
 import           Data.Monoid ((<>), mempty)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Vector as V
-import           Data.Word (Word8)
 
 import           Hadoop.SequenceFile.Parser
 import           Hadoop.SequenceFile.Types
+import           Hadoop.Writable
 
 ------------------------------------------------------------------------
 
@@ -88,61 +77,9 @@ instance Foldable Stream where
 
 ------------------------------------------------------------------------
 
--- | Equivalent to /org.apache.hadoop.io.Writable/.  Any /key/ or /value/
--- type in the Hadoop Map-Reduce framework implements this interface.
-class Writable a where
-    -- | Gets the package qualified name of 'a' in Java land. Does not
-    -- inspect the value of 'a', simply uses it for type information.
-    javaType :: a -> Text
-
-    -- | Convert a strict 'B.ByteString' to a value.
-    fromBytes :: S.ByteString -> a
-
-    -- | Convert a value to a strict 'B.ByteString'.
-    toBytes :: a -> S.ByteString
-
-------------------------------------------------------------------------
-
-instance Writable () where
-    javaType _  = "org.apache.hadoop.io.NullWritable"
-    fromBytes _ = ()
-    toBytes _   = S.empty
-
-instance Writable Text where
-    javaType _               = "org.apache.hadoop.io.TextWritable"
-    fromBytes bs | S.null bs = T.empty
-                 | otherwise = T.decodeUtf8 $ S.drop (vintSize (S.head bs)) bs
-    toBytes _                = error "Writable.Text.toBytes: not implemented"
-
-instance Writable S.ByteString where
-    javaType _ = "org.apache.hadoop.io.BytesWritable"
-    fromBytes  = S.drop 4
-    toBytes _  = error "Writable.Text.toBytes: not implemented"
-
-------------------------------------------------------------------------
-
-type RawRecordBlock = RecordBlock S.ByteString S.ByteString
-
-vintSize :: Word8 -> Int
-vintSize = go . fromIntegral
-  where
-    go :: Int8 -> Int
-    go x | x >= -112 = 1
-         | x < -120  = fromIntegral (-119 - x)
-         | otherwise = fromIntegral (-111 - x)
-
-------------------------------------------------------------------------
-
 -- | Decode a lazy 'L.ByteString' in to a stream of record blocks.
-decode :: (Writable k, Writable v) => L.ByteString -> Stream (RecordBlock k v)
-decode bs = go <$> rawDecode bs
-  where
-    go RecordBlock{..} = RecordBlock (V.map fromBytes rbKeys)
-                                     (V.map fromBytes rbValues)
-
--- | Decode a lazy 'L.ByteString' in to a stream of raw record blocks.
-rawDecode :: L.ByteString -> Stream RawRecordBlock
-rawDecode bs = case A.parse header bs of
+decode :: (Writable ck k, Writable cv v) => L.ByteString -> Stream (RecordBlock k v)
+decode bs = case A.parse header bs of
     A.Fail _ ctx err -> mkError ctx err
     A.Done bs' hdr   -> untilEnd (recordBlock hdr) bs'
 

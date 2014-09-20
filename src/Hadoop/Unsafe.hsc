@@ -1,15 +1,15 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Hadoop.Unsafe
     ( decodeSnappyBlock
     ) where
 
 import           Control.Monad (unless)
-import qualified Data.ByteString as B
 import           Data.ByteString.Internal (ByteString(..))
 import           Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import qualified Data.Vector as V
 import qualified Data.Vector.Storable as SV
+import qualified Data.Vector.Unboxed as U
 import           Data.Word (Word8)
 import           Foreign.C
 import           Foreign.ForeignPtr
@@ -17,6 +17,8 @@ import           Foreign.Marshal (alloca, finalizerFree)
 import           Foreign.Ptr
 import           Foreign.Storable
 import           System.IO.Unsafe (unsafeDupablePerformIO)
+
+import           Hadoop.Writable
 
 ------------------------------------------------------------------------
 
@@ -51,7 +53,7 @@ instance Storable CBlock where
 
 ------------------------------------------------------------------------
 
-decodeSnappyBlock :: Int -> ByteString -> ByteString -> V.Vector ByteString
+decodeSnappyBlock :: Writable c a => Int -> ByteString -> ByteString -> c a
 decodeSnappyBlock nRecs lengths values =
     unsafeDupablePerformIO $
     unsafeUseAsCStringLen lengths $ \(lPtr, lSize) ->
@@ -70,14 +72,7 @@ decodeSnappyBlock nRecs lengths values =
     lengthPtr <- newForeignPtr finalizerFree (cLengthPtr block)
     dataPtr   <- newForeignPtr finalizerFree (cDataPtr block)
 
-    let bs = PS dataPtr 0 (fromIntegral (cDataSize block))
-        lv = SV.unsafeFromForeignPtr0 lengthPtr nRecs
+    let bytes = PS dataPtr 0 (fromIntegral (cDataSize block))
+        lens  = U.convert . SV.map fromIntegral $ SV.unsafeFromForeignPtr0 lengthPtr nRecs
 
-    return (split bs lv)
-  where
-    split :: ByteString -> SV.Vector CSize -> V.Vector ByteString
-    split bs lv = snd $ SV.foldl' go (bs, V.empty) lv
-
-    go :: (ByteString, V.Vector ByteString) -> CSize -> (ByteString, V.Vector ByteString)
-    go (bs, v) l = let (vbs, bs') = B.splitAt (fromIntegral l) bs
-                   in (bs', v `V.snoc` vbs)
+    return (fromBytes bytes lens)
