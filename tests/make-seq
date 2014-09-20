@@ -21,3 +21,5 @@ export LD_LIBRARY_PATH=$NLIB
 
 javac -cp $JAVA_PATH MakeSequenceFiles.java
 java -Djava.library.path=$NLIB -cp $JAVA_PATH MakeSequenceFiles
+
+chmod ugo-x *.seq
