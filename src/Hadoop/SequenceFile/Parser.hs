@@ -1,15 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -w #-}
 
-module Data.Hadoop.SequenceFile
-    ( Header(..)
-    , RecordBlock(..)
-    , pHeader
-    , pRecordBlock
-    , pTextWritable
-    , pBytesWritable
+module Hadoop.SequenceFile.Parser
+    ( header
+    , recordBlock
     ) where
 
 import           Control.Applicative ((<$>), (<*>))
@@ -23,14 +19,14 @@ import           Data.ByteString.Internal (ByteString(..))
 import           Data.Int
 import           Data.Text (Text)
 import qualified Data.Text.Encoding as T
-import qualified Data.Vector as V
 import           Data.Word
 import           Foreign.ForeignPtr (withForeignPtr)
 import           Foreign.Storable (Storable, peekByteOff)
 import           System.IO.Unsafe (unsafeDupablePerformIO)
 import           Text.Printf (printf)
 
-import           Data.Hadoop.Unsafe
+import           Hadoop.SequenceFile.Types
+import           Hadoop.Unsafe
 
 ------------------------------------------------------------------------
 
@@ -38,26 +34,9 @@ import           Data.Hadoop.Unsafe
 
 ------------------------------------------------------------------------
 
-data Header = Header
-    { keyType         :: !Text
-    , valueType       :: !Text
-    , compressionType :: !Text
-    , metadata        :: ![(Text, Text)]
-    , sync            :: !MD5
-    } deriving (Show)
-
-newtype MD5 = MD5 ByteString
-    deriving (Eq)
-
-data RecordBlock = RecordBlock
-    { keys       :: !(V.Vector ByteString)
-    , values     :: !(V.Vector ByteString)
-    }
-
-------------------------------------------------------------------------
-
-pHeader :: Parser Header
-pHeader = do
+-- | Attoparsec 'Parser' for sequence file headers.
+header :: Parser Header
+header = do
     magic <- A.take 3
     when (magic /= "SEQ")
          (fail "not a sequence file")
@@ -66,43 +45,47 @@ pHeader = do
     when (version /= 6)
          (fail $ "unknown version: " ++ show version)
 
-    keyType   <- pTextWritable
-    valueType <- pTextWritable
+    hdKeyType   <- textWritable
+    hdValueType <- textWritable
 
-    compression      <- anyBool
-    blockCompression <- anyBool
+    hdCompression      <- anyBool
+    hdBlockCompression <- anyBool
 
-    unless (compression && blockCompression)
+    unless (hdCompression && hdBlockCompression)
            (fail "only block compressed files supported")
 
-    compressionType <- pTextWritable
+    hdCompressionType <- textWritable
 
-    unless (compressionType == "org.apache.hadoop.io.compress.SnappyCodec")
+    unless (hdCompressionType == "org.apache.hadoop.io.compress.SnappyCodec")
            (fail "only snappy compressed files supported")
 
-    metadata <- pMetadata
-    sync     <- anyMD5
+    hdMetadata <- metadata
+    hdSync     <- md5
 
     return Header{..}
 
-pMetadata :: Parser [(Text, Text)]
-pMetadata = do
+metadata :: Parser [(Text, Text)]
+metadata = do
     n <- fromIntegral <$> anyWord32le
-    replicateM n $ (,) <$> pTextWritable <*> pTextWritable
+    replicateM n $ (,) <$> textWritable <*> textWritable
+
+md5 :: Parser MD5
+md5 = MD5 <$> A.take 16
 
 ------------------------------------------------------------------------
 
-pRecordBlock :: MD5 -> Parser RecordBlock
-pRecordBlock sync = do
+-- | Attoparsec 'Parser' for sequence file record blocks.
+recordBlock :: Header -> Parser (RecordBlock ByteString ByteString)
+recordBlock Header{..} = do
     escape <- anyWord32le
     when (escape /= 0xffffffff)
          (fail $ "file corrupt, expected to find sync escape " ++
                  "<0xffffffff> but was " ++ printf "<0x%0x>" escape)
 
-    sync' <- anyMD5
-    when (sync /= sync')
+    sync <- md5
+    when (hdSync /= sync)
          (fail $ "file corrupt, expected to find sync marker " ++
-                 "<" ++ show sync ++ "> but was <" ++ show sync' ++ ">")
+                 "<" ++ show hdSync ++ "> but was <" ++ show sync ++ ">")
 
     cNumRecords   <- anyVInt
     cKeyLengths   <- vintPrefixedBytes
@@ -110,22 +93,16 @@ pRecordBlock sync = do
     cValueLengths <- vintPrefixedBytes
     cValues       <- vintPrefixedBytes
 
-    let keys   = decodeSnappyBlock cNumRecords cKeyLengths   cKeys
-        values = decodeSnappyBlock cNumRecords cValueLengths cValues
+    let rbKeys   = decodeSnappyBlock cNumRecords cKeyLengths   cKeys
+        rbValues = decodeSnappyBlock cNumRecords cValueLengths cValues
 
     return RecordBlock{..}
 
 ------------------------------------------------------------------------
 
-pTextWritable :: Parser Text
-pTextWritable = T.decodeUtf8 <$> vintPrefixedBytes
-{-# INLINE pTextWritable #-}
-
-pBytesWritable :: Parser ByteString
-pBytesWritable = A.take . fromIntegral =<< anyWord32be
-{-# INLINE pBytesWritable #-}
-
-------------------------------------------------------------------------
+textWritable :: Parser Text
+textWritable = T.decodeUtf8 <$> vintPrefixedBytes
+{-# INLINE textWritable #-}
 
 vintPrefixedBytes :: Parser ByteString
 vintPrefixedBytes = A.take =<< anyVInt
@@ -134,10 +111,6 @@ vintPrefixedBytes = A.take =<< anyVInt
 anyBool :: Parser Bool
 anyBool = (/= 0) <$> A.anyWord8
 {-# INLINE anyBool #-}
-
-anyMD5 :: Parser MD5
-anyMD5 = MD5 <$> A.take 16
-{-# INLINE anyMD5 #-}
 
 anyVInt :: Parser Int
 anyVInt = fromIntegral <$> anyVInt64
@@ -197,14 +170,3 @@ anyWord32swap = byteSwap32 <$> anyWord32host
 peekBS :: Storable a => ByteString -> a
 peekBS (PS fp off _) = unsafeDupablePerformIO $ withForeignPtr fp $ \ptr -> peekByteOff ptr off
 {-# INLINE peekBS #-}
-
-------------------------------------------------------------------------
-
-instance Show MD5 where
-    show (MD5 bs) = printf "%0x%0x%0x%0x%0x%0x"
-                           (bs `B.index` 0)
-                           (bs `B.index` 1)
-                           (bs `B.index` 2)
-                           (bs `B.index` 3)
-                           (bs `B.index` 4)
-                           (bs `B.index` 5)

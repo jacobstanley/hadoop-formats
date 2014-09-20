@@ -1,6 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
-module Data.Hadoop.Unsafe
+module Hadoop.Unsafe
     ( decodeSnappyBlock
     ) where
 
@@ -8,8 +8,6 @@ import           Control.Monad (unless)
 import qualified Data.ByteString as B
 import           Data.ByteString.Internal (ByteString(..))
 import           Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import           Data.Int (Int32)
-import           Data.Monoid ((<>))
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as SV
 import           Data.Word (Word8)
