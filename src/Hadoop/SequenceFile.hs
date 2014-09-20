@@ -11,12 +11,11 @@
 -- __Basic Examples__
 --
 -- > import           Control.Applicative ((<$>))
--- > import           Data.ByteString (ByteString)
 -- > import qualified Data.ByteString.Lazy as L
 -- > import qualified Data.Foldable as F
+-- > import           Data.Int (Int32)
 -- > import           Data.Text (Text)
 -- > import qualified Data.Text.IO as T
--- > import           System.FilePath (FilePath)
 -- >
 -- > import           Hadoop.SequenceFile
 -- >
@@ -24,7 +23,7 @@
 -- > printKeys :: FilePath -> IO ()
 -- > printKeys path = do
 -- >     bs <- L.readFile path
--- >     let records = decode bs :: Stream (RecordBlock Text ByteString)
+-- >     let records = decode bs :: Stream (RecordBlock Text Int32)
 -- >     F.for_ records $ \rb -> do
 -- >         F.mapM_ T.putStrLn (rbKeys rb)
 -- >
@@ -32,7 +31,7 @@
 -- > recordCount :: FilePath -> IO ()
 -- > recordCount path = do
 -- >     bs <- L.readFile path
--- >     let records = decode bs :: Stream (RecordBlock Text ByteString)
+-- >     let records = decode bs :: Stream (RecordBlock Text Int32)
 -- >     print $ F.sum $ rbCount <$> records
 --
 -- __Integration with Conduit__
@@ -89,6 +88,7 @@ untilEnd p bs = case A.parse p bs of
     A.Done bs' x     -> Value x (untilEnd p bs')
 
 mkError :: [String] -> String -> Stream a
+mkError [] err  = Error err
 mkError ctx err = Error (err <> "\ncontext:\n" <> concatMap indentLn ctx)
   where
     indentLn str    = "    " <> str <> "\n"

@@ -1,73 +1,112 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# OPTIONS_GHC -w #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hadoop.Writable
     ( Writable(..)
-    , Collection(..)
+    , Collection
+    , Decoder(..)
     ) where
 
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString as S
+import qualified Data.ByteString as B
+import           Data.ByteString.Internal (ByteString(..))
 import           Data.Int (Int8, Int16, Int32, Int64)
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.Word (Word8)
+import           Foreign.ForeignPtr (castForeignPtr)
+import           Foreign.Storable (sizeOf)
 
 import qualified Data.Vector as V
-import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Storable as S
 
 ------------------------------------------------------------------------
 
-type family Collection a
-type instance Collection ()         = U.Vector ()
-type instance Collection Text       = V.Vector Text
-type instance Collection ByteString = V.Vector ByteString
-
-------------------------------------------------------------------------
-
--- | Equivalent to a collection of /org.apache.hadoop.io.Writable/. Any
--- serializable /key/ or /value/ type in the Hadoop Map-Reduce framework
--- implements this interface.
+-- | Equivalent to the java interface /org.apache.hadoop.io.Writable/.
+-- All serializable /key/ or /value/ types in the Hadoop Map-Reduce
+-- framework implement this interface.
 class Collection a ~ c a => Writable c a where
     -- | Gets the package qualified name of 'a' in Java land. Does not
     -- inspect the value of 'a', simply uses it for type information.
     javaType :: a -> Text
 
-    -- | Convert a strict 'B.ByteString' and a list of lengths to a vector.
-    fromBytes :: ByteString   -- ^ the encoded bytes
-              -> U.Vector Int -- ^ a list of lengths describing how long each value in the encoded bytes is
-              -> c a          -- ^ the decoded collection of values
+    -- | Gets a decoder for this writable type.
+    decoder :: Decoder (c a)
+
+-- | A specialized decoder for different types of writable.
+data Decoder a = Variable (ByteString -> U.Vector Int -> a) -- ^ The slowest. Variable length data.
+               | LE16 (ByteString -> a) -- All values are 16-bit little endian.
+               | LE32 (ByteString -> a) -- All values are 32-bit little endian.
+               | LE64 (ByteString -> a) -- All values are 64-bit little endian.
+               | BE16 (ByteString -> a) -- All values are 16-bit big endian.
+               | BE32 (ByteString -> a) -- All values are 32-bit big endian.
+               | BE64 (ByteString -> a) -- All values are 64-bit big endian.
+
+------------------------------------------------------------------------
+
+type family Collection a
+type instance Collection ()         = U.Vector ()
+type instance Collection Int16      = U.Vector Int16
+type instance Collection Int32      = U.Vector Int32
+type instance Collection Int64      = U.Vector Int64
+type instance Collection Float      = U.Vector Float
+type instance Collection Double     = U.Vector Double
+type instance Collection Text       = V.Vector Text
+type instance Collection ByteString = V.Vector ByteString
 
 ------------------------------------------------------------------------
 
 instance Writable U.Vector () where
-    javaType _     = "org.apache.hadoop.io.NullWritable"
-    fromBytes _ ls = U.replicate (U.length ls) ()
+    javaType _ = "org.apache.hadoop.io.NullWritable"
+    decoder    = Variable $ \_ ls -> U.replicate (U.length ls) ()
+
+instance Writable U.Vector Int16 where
+    javaType _ = "org.apache.hadoop.io.ShortWritable"
+    decoder    = BE16 bytesToVector
+
+instance Writable U.Vector Int32 where
+    javaType _ = "org.apache.hadoop.io.IntWritable"
+    decoder    = BE32 bytesToVector
+
+instance Writable U.Vector Int64 where
+    javaType _ = "org.apache.hadoop.io.LongWritable"
+    decoder    = BE64 bytesToVector
+
+instance Writable U.Vector Float where
+    javaType _ = "org.apache.hadoop.io.FloatWritable"
+    decoder    = BE32 bytesToVector
+
+instance Writable U.Vector Double where
+    javaType _ = "org.apache.hadoop.io.DoubleWritable"
+    decoder    = BE64 bytesToVector
 
 instance Writable V.Vector ByteString where
-    javaType _      = "org.apache.hadoop.io.BytesWritable"
-    fromBytes bs ls = split (S.drop 4) bs ls
+    javaType _ = "org.apache.hadoop.io.BytesWritable"
+    decoder    = Variable $ \bs ls -> split (B.drop 4) bs ls
 
 instance Writable V.Vector Text where
-    javaType _      = "org.apache.hadoop.io.TextWritable"
-    fromBytes bs ls = split go bs ls
+    javaType _ = "org.apache.hadoop.io.Text"
+    decoder    = Variable $ \bs ls -> split go bs ls
       where
-        go bs' | S.null bs' = T.empty
-               | otherwise  = T.decodeUtf8 $ S.drop (vintSize (S.head bs')) bs'
+        go bs' | B.null bs' = T.empty
+               | otherwise  = T.decodeUtf8 $ B.drop (vintSize (B.head bs')) bs'
 
 ------------------------------------------------------------------------
 
-split :: (S.ByteString -> a) -> S.ByteString -> U.Vector Int -> V.Vector a
+bytesToVector :: forall a. (S.Storable a, U.Unbox a) => ByteString -> U.Vector a
+bytesToVector (PS bs off nbytes) = U.convert
+                                 $ S.unsafeFromForeignPtr (castForeignPtr bs) off
+                                 $ nbytes `div` sizeOf (undefined :: a)
+
+split :: (ByteString -> a) -> ByteString -> U.Vector Int -> V.Vector a
 split f bs lens = snd $ U.foldl' (splitOne f) (bs, V.empty) lens
 
-splitOne :: (S.ByteString -> a) -> (S.ByteString, V.Vector a) -> Int -> (ByteString, V.Vector a)
-splitOne f (bs, v) l = let (vbs, bs') = S.splitAt l bs
+splitOne :: (ByteString -> a) -> (ByteString, V.Vector a) -> Int -> (ByteString, V.Vector a)
+splitOne f (bs, v) l = let (vbs, bs') = B.splitAt l bs
                        in (bs', v `V.snoc` f vbs)
 
 vintSize :: Word8 -> Int

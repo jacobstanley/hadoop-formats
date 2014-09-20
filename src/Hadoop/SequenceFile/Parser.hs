@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -w #-}
 
@@ -18,7 +19,9 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import           Data.ByteString.Internal (ByteString(..))
 import           Data.Int
+import           Data.Monoid ((<>))
 import           Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.Word
 import           Foreign.ForeignPtr (withForeignPtr)
@@ -77,8 +80,16 @@ md5 = MD5 <$> A.take 16
 ------------------------------------------------------------------------
 
 -- | Attoparsec 'Parser' for sequence file record blocks.
-recordBlock :: (Writable ck k, Writable cv v) => Header -> Parser (RecordBlock k v)
+recordBlock :: forall ck k cv v. (Writable ck k, Writable cv v) => Header -> Parser (RecordBlock k v)
 recordBlock Header{..} = do
+    when (hdKeyType /= keyType)
+         (fail $ "expected keys of type <" <> T.unpack keyType <> "> "
+              <> "but file contains <" <> T.unpack hdKeyType <> ">")
+
+    when (hdValueType /= valueType)
+         (fail $ "expected values of type <" <> T.unpack valueType <> "> "
+              <> "but file contains <" <> T.unpack hdValueType <> ">")
+
     escape <- anyWord32le
     when (escape /= 0xffffffff)
          (fail $ "file corrupt, expected to find sync escape " ++
@@ -99,6 +110,9 @@ recordBlock Header{..} = do
         rbValues = decodeSnappyBlock rbCount valueLengths values
 
     return RecordBlock{..}
+  where
+    keyType   = javaType (undefined :: k)
+    valueType = javaType (undefined :: v)
 
 ------------------------------------------------------------------------
 
