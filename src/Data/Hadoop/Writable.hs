@@ -1,7 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Data.Hadoop.Writable
     ( Writable(..)
@@ -48,6 +49,7 @@ data Decoder a = Variable (ByteString -> U.Vector Int -> a) -- ^ The slowest. Va
                | BE16 (ByteString -> a) -- ^ All values are 16-bit big endian.
                | BE32 (ByteString -> a) -- ^ All values are 32-bit big endian.
                | BE64 (ByteString -> a) -- ^ All values are 64-bit big endian.
+    deriving (Functor)
 
 ------------------------------------------------------------------------
 

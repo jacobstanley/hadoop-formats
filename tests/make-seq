@@ -1,0 +1,23 @@
+#!/bin/sh
+HAD=/usr/lib/hadoop
+LIB=/usr/lib/hadoop/lib
+NLIB=/usr/lib/hadoop/lib/native/
+
+JAVA_PATH=\
+$HAD/hadoop-annotations.jar:\
+$HAD/hadoop-auth.jar:\
+$HAD/hadoop-common.jar:\
+$LIB/commons-collections-3.2.1.jar:\
+$LIB/commons-configuration-1.6.jar:\
+$LIB/commons-lang-2.5.jar:\
+$LIB/slf4j-api-1.6.1.jar:\
+$LIB/commons-logging-1.1.1.jar:\
+$LIB/guava-11.0.2.jar:\
+$LIB/snappy-java-1.0.4.1.jar:\
+$LIB/avro-1.7.4.jar:\
+.
+
+export LD_LIBRARY_PATH=$NLIB
+
+javac -cp $JAVA_PATH MakeSequenceFiles.java
+java -Djava.library.path=$NLIB -cp $JAVA_PATH MakeSequenceFiles
