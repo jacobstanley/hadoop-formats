@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Hadoop.Unsafe
+module Data.Hadoop.Unsafe
     ( decodeSnappyBlock
     ) where
 
@@ -20,7 +20,7 @@ import           Foreign.Ptr
 import           Foreign.Storable
 import           System.IO.Unsafe (unsafeDupablePerformIO)
 
-import           Hadoop.Writable
+import           Data.Hadoop.Writable
 
 ------------------------------------------------------------------------
 

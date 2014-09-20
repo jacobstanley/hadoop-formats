@@ -3,9 +3,8 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -w #-}
 
-module Hadoop.SequenceFile.Parser
+module Data.Hadoop.SequenceFile.Parser
     ( header
     , recordBlock
     ) where
@@ -29,9 +28,9 @@ import           Foreign.Storable (Storable, peekByteOff)
 import           System.IO.Unsafe (unsafeDupablePerformIO)
 import           Text.Printf (printf)
 
-import           Hadoop.SequenceFile.Types
-import           Hadoop.Unsafe
-import           Hadoop.Writable
+import           Data.Hadoop.SequenceFile.Types
+import           Data.Hadoop.Unsafe
+import           Data.Hadoop.Writable
 
 ------------------------------------------------------------------------
 

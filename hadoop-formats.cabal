@@ -1,5 +1,5 @@
 name:          hadoop-formats
-version:       0.1.0.0
+version:       0.2.0.0
 
 synopsis:
   Read/write file formats commonly used by Hadoop.
@@ -35,7 +35,7 @@ library
   include-dirs: cbits
   extra-libraries: snappy
 
-  cc-options: -O3
+  -- cc-options:
   --  -Weverything
   --  -Werror
   --  -Wno-error=variadic-macros
@@ -50,13 +50,13 @@ library
   ghc-prof-options: -auto-all -caf-all
 
   other-modules:
-    Hadoop.Unsafe
+    Data.Hadoop.Unsafe
 
   exposed-modules:
-    Hadoop.SequenceFile
-    Hadoop.SequenceFile.Parser
-    Hadoop.SequenceFile.Types
-    Hadoop.Writable
+    Data.Hadoop.SequenceFile
+    Data.Hadoop.SequenceFile.Parser
+    Data.Hadoop.SequenceFile.Types
+    Data.Hadoop.Writable
 
   build-depends:
         base       >= 4.7 && < 4.8

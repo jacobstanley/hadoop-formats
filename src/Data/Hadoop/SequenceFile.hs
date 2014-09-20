@@ -17,7 +17,7 @@
 -- > import           Data.Text (Text)
 -- > import qualified Data.Text.IO as T
 -- >
--- > import           Hadoop.SequenceFile
+-- > import           Data.Hadoop.SequenceFile
 -- >
 -- > -- | Print all the keys in a sequence file.
 -- > printKeys :: FilePath -> IO ()
@@ -41,7 +41,7 @@
 -- >     bs <- liftIO (L.readFile path)
 -- >     F.traverse_ yield (decode bs)
 
-module Hadoop.SequenceFile
+module Data.Hadoop.SequenceFile
     ( Stream(..)
     , Writable(..)
     , RecordBlock(..)
@@ -53,9 +53,9 @@ import qualified Data.ByteString.Lazy as L
 import           Data.Foldable (Foldable(..))
 import           Data.Monoid ((<>), mempty)
 
-import           Hadoop.SequenceFile.Parser
-import           Hadoop.SequenceFile.Types
-import           Hadoop.Writable
+import           Data.Hadoop.SequenceFile.Parser
+import           Data.Hadoop.SequenceFile.Types
+import           Data.Hadoop.Writable
 
 ------------------------------------------------------------------------
 

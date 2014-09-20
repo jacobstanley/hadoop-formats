@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Hadoop.Writable
+module Data.Hadoop.Writable
     ( Writable(..)
     , Collection
     , Decoder(..)

@@ -1,4 +1,4 @@
-module Hadoop.SequenceFile.Types
+module Data.Hadoop.SequenceFile.Types
     ( Header(..)
     , MD5(..)
     , RecordBlock(..)
@@ -9,7 +9,7 @@ import qualified Data.ByteString as B
 import           Data.Text (Text)
 import           Text.Printf (printf)
 
-import           Hadoop.Writable
+import           Data.Hadoop.Writable
 
 ------------------------------------------------------------------------
 

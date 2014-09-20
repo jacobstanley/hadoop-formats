@@ -5,7 +5,7 @@ import           Data.Int (Int32)
 import           Data.Text (Text)
 import qualified Data.Text.IO as T
 
-import           Hadoop.SequenceFile
+import           Data.Hadoop.SequenceFile
 
 main :: IO ()
 main = do
