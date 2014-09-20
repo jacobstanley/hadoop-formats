@@ -39,12 +39,12 @@ class Collection a ~ c a => Writable c a where
 
 -- | A specialized decoder for different types of writable.
 data Decoder a = Variable (ByteString -> U.Vector Int -> a) -- ^ The slowest. Variable length data.
-               | LE16 (ByteString -> a) -- All values are 16-bit little endian.
-               | LE32 (ByteString -> a) -- All values are 32-bit little endian.
-               | LE64 (ByteString -> a) -- All values are 64-bit little endian.
-               | BE16 (ByteString -> a) -- All values are 16-bit big endian.
-               | BE32 (ByteString -> a) -- All values are 32-bit big endian.
-               | BE64 (ByteString -> a) -- All values are 64-bit big endian.
+               | LE16 (ByteString -> a) -- ^ All values are 16-bit little endian.
+               | LE32 (ByteString -> a) -- ^ All values are 32-bit little endian.
+               | LE64 (ByteString -> a) -- ^ All values are 64-bit little endian.
+               | BE16 (ByteString -> a) -- ^ All values are 16-bit big endian.
+               | BE32 (ByteString -> a) -- ^ All values are 32-bit big endian.
+               | BE64 (ByteString -> a) -- ^ All values are 64-bit big endian.
 
 ------------------------------------------------------------------------
 
