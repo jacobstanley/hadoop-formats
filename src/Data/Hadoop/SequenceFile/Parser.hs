@@ -3,7 +3,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -w #-}
 
 module Data.Hadoop.SequenceFile.Parser
