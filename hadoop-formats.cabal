@@ -35,7 +35,7 @@ library
   include-dirs: cbits
   extra-libraries: snappy
 
-  --cc-options:
+  cc-options: -O3
   --  -Weverything
   --  -Werror
   --  -Wno-error=variadic-macros
