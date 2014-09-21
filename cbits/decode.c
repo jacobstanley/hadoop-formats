@@ -38,36 +38,38 @@ static inline uint32_t uint32_be(const char *bytes)
 
 ////////////////////////////////////////////////////////////////////////
 
-static inline bool is_negative_vint(char value)
-{
-  return value < -120 || (value >= -112 && value < 0);
+static inline bool vint_single(char first) {
+    return (first & 0b11110000) != 0b10000000;
 }
 
-static inline int get_vint_size(char value)
-{
-  if (value >= -112) return 1;
-  if (value <  -120) return -119 - value;
-  return -111 - value;
+static inline int vint_remaining(char first) {
+    return (~first & 0b0000111) + 1;
 }
 
-static inline int decode_vint(const char *bytes, size_t *bytes_read)
+static inline bool vint_negative(char first) {
+    return ~first & 0b0001000;
+}
+
+static inline int vint_decode(const char *bytes, size_t *bytes_read)
 {
-  char first = *bytes++;
-  int size = get_vint_size(first);
-  *bytes_read = (size_t)size;
+    char first = *bytes++;
 
-  if (size == 1) {
-    return first;
-  }
+    if (vint_single(first)) {
+        *bytes_read = 1;
+        return first;
+    }
 
-  int x = 0;
-  for (int i = 0; i < size-1; i++) {
-    char b = *bytes++;
-    x = x << 8;
-    x = x | (b & 0xFF);
-  }
+    int remaining = vint_remaining(first);
+    *bytes_read = 1 + remaining;
 
-  return is_negative_vint(first) ? ~x : x;
+    int x = 0;
+    for (int i = 0; i < remaining; i++) {
+        char b = *bytes++;
+        x = x << 8;
+        x = x | (b & 0xff);
+    }
+
+    return vint_negative(first) ? ~x : x;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -150,7 +152,7 @@ int hadoop_decode_snappy_block(
 
         while (records_remaining > 0 && bytes_remaining > 0) {
             size_t vint_size = 0;
-            *lengths = (size_t)decode_vint(bytes, &vint_size);
+            *lengths = (size_t)vint_decode(bytes, &vint_size);
 
             lengths++;
             records_remaining--;
