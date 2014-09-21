@@ -4,9 +4,10 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- | This module allows for lazy decoding of hadoop sequence files from a lazy
--- 'L.ByteString'. In the future an incremental API using strict 'S.ByteString'
--- will be provided, but for now if you need that level of control you need to
--- use the attoparsec parsers in 'Hadoop.SequenceFile.Parser' directly.
+-- 'L.ByteString'. In the future an incremental API using strict
+-- 'Data.ByteString.ByteString' will be provided, but for now if you need that
+-- level of control you need to use the attoparsec parsers in
+-- "Data.Hadoop.SequenceFile.Parser" directly.
 --
 -- __Basic Examples__
 --
