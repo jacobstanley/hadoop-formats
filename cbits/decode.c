@@ -1,12 +1,11 @@
+#include <snappy-c.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <snappy-c.h>
 
 #include "MachDeps.h"
 
 #include "decode.h"
-
-typedef int bool;
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -66,7 +65,7 @@ static inline int vint_decode(const char *bytes, size_t *bytes_read)
     for (int i = 0; i < remaining; i++) {
         char b = *bytes++;
         x = x << 8;
-        x = x | (b & 0xff);
+        x = x | b;
     }
 
     return vint_negative(first) ? ~x : x;
