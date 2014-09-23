@@ -8,6 +8,10 @@ module Data.Hadoop.Writable
     ( Writable(..)
     , Collection
     , Decoder(..)
+
+    , split
+    , vintSize
+    , bytesToVector
     ) where
 
 import           Control.Monad (replicateM_)
@@ -24,7 +28,8 @@ import           Foreign.ForeignPtr (castForeignPtr)
 import           Foreign.Storable (sizeOf)
 
 import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as M
+import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Storable as S
 
@@ -107,8 +112,8 @@ bytesToVector (PS bs off nbytes) = U.convert
                                  $ S.unsafeFromForeignPtr (castForeignPtr bs) off
                                  $ nbytes `div` sizeOf (undefined :: a)
 
-split :: (ByteString -> a) -> ByteString -> U.Vector Int -> V.Vector a
-split f bs lens = V.create $ do
+split :: G.Vector v a => (ByteString -> a) -> ByteString -> U.Vector Int -> v a
+split f bs lens = G.create $ do
     let numRecs = U.length lens
     v <- M.unsafeNew numRecs
     offRef <- newSTRef 0
