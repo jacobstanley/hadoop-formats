@@ -65,7 +65,7 @@ static inline int vint_decode(const char *bytes, size_t *bytes_read)
     for (int i = 0; i < remaining; i++) {
         char b = *bytes++;
         x = x << 8;
-        x = x | b;
+        x = x | (b & 0xff);
     }
 
     return vint_negative(first) ? ~x : x;
