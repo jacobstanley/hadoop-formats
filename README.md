@@ -6,6 +6,7 @@ Read/write file formats commonly used by Hadoop.
 Currently this package only supports reading sequence files.
 
 [![Build Status](https://travis-ci.org/jystic/hadoop-formats.svg?branch=master)](https://travis-ci.org/jystic/hadoop-formats)
+[![Hackage](http://img.shields.io/hackage/v/hadoop-formats.png)](http://hackage.haskell.org/package/hadoop-formats)
 
 ## Installation
 
