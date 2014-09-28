@@ -1,12 +1,8 @@
-Hadoop Formats
-==============
+# Hadoop Formats [![Hackage version](https://img.shields.io/hackage/v/hadoop-formats.svg?style=flat)](http://hackage.haskell.org/package/hadoop-formats) [![Build Status](http://img.shields.io/travis/jystic/hadoop-formats.svg?style=flat)](https://travis-ci.org/jystic/hadoop-formats)
 
 Read/write file formats commonly used by Hadoop.
 
-Currently this package only supports reading sequence files.
-
-[![Build Status](https://travis-ci.org/jystic/hadoop-formats.svg?branch=master)](https://travis-ci.org/jystic/hadoop-formats)
-[![Hackage](http://img.shields.io/hackage/v/hadoop-formats.png)](http://hackage.haskell.org/package/hadoop-formats)
+Currently this package only supports reading snappy encoding sequence files.
 
 ## Installation
 
