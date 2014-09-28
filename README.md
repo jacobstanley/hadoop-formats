@@ -2,7 +2,7 @@
 
 Read/write file formats commonly used by Hadoop.
 
-Currently this package only supports reading snappy encoding sequence files.
+Currently this package only supports reading snappy encoded sequence files.
 
 ## Installation
 
